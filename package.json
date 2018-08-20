@@ -6,23 +6,25 @@
     "private": true,
     "scripts": {
         "start": "node ./bin/www",
-        "test": "node ./test/server.test.js",
-        "generate": "node ./generateData.js"
+        "test": "node ./test/server.test.js"
     },
     "dependencies": {
         "body-parser": "^1.18.x",
         "express": "^4.16.x",
         "faker": "^4.1.x",
-        "mongoose": "^5.0.x",
         "nconf": "^0.10.x",
         "oauth2orize": "^1.11.x",
         "passport": "^0.4.x",
         "passport-http": "^0.3.x",
         "passport-http-bearer": "^1.0.x",
         "passport-oauth2-client-password": "^0.1.x",
+        "pg": "^7.4.3",
+        "pg-hstore": "^2.3.2",
+        "sequelize": "^4.38.0",
         "winston": "^2.4.x"
     },
     "devDependencies": {
+        "@types/node": "^10.5.7",
         "superagent": "^3.8.x",
         "tape": "^4.9.x"
     },

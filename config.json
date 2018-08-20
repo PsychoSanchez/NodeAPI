@@ -1,20 +1,33 @@
 {
     "port": 1337,
     "security": {
-        "tokenLife" : 3600
-    },
-    "mongoose": {
-        "uri": "mongodb://localhost/apiDB"
+        "tokenLife": 3600
     },
     "default": {
         "user": {
-            "username": "myapi",
-            "password": "abc1234"
+            "username": "admin",
+            "password": "1admin!"
         },
         "client": {
-            "name": "Android API v1",
-            "clientId": "android",
-            "clientSecret": "SomeRandomCharsAndNumbers"
+            "name": "Chrome extension API v1",
+            "clientId": "chrome-ext",
+            "clientSecret": "aJhjsdjl13gh7"
         }
-    }
+    },
+    "users": [
+        {
+            "username": "admin",
+            "password": "1admin!",
+            "firstname": "admin",
+            "lastname": "admin",
+            "role": "SUPERADMIN"
+        }
+    ],
+    "clients": [
+        {
+            "name": "Chrome extension API v1",
+            "clientId": "chrome-ext",
+            "clientSecret": "aJhjsdjl13gh7"
+        }
+    ]
 }

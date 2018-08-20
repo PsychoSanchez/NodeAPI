@@ -7,103 +7,118 @@ var libs = process.cwd() + '/libs/';
 var config = require(libs + 'config');
 var log = require(libs + 'log')(module);
 
-var db = require(libs + 'db/mongoose');
-var User = require(libs + 'model/user');
-var AccessToken = require(libs + 'model/accessToken');
-var RefreshToken = require(libs + 'model/refreshToken');
+var model = require('../models').models;
+var User = model.User;
+var Client = model.Client;
+var AccessToken = model.AccessToken;
+var RefreshToken = model.RefreshToken;
 
 // Create OAuth 2.0 server
 var aserver = oauth2orize.createServer();
 
 // Generic error handler
-var errFn = function (cb, err) {
+var errFn = function(cb, err) {
     if (err) {
         return cb(err);
     }
 };
 
 // Destroy any old tokens and generates a new access and refresh token
-var generateTokens = function (data, done) {
+function generateTokens(data, done) {
 
     // Curries in `done` callback so we don't need to pass it
     var errorHandler = errFn.bind(undefined, done),
-        refreshToken,
         refreshTokenValue,
-        token,
         tokenValue;
 
-    RefreshToken.remove(data, errorHandler);
-    AccessToken.remove(data, errorHandler);
+    RefreshToken.destroy({where: data}).catch(errorHandler);
+    AccessToken.destroy({where: data}).catch(errorHandler);
 
     tokenValue = crypto.randomBytes(32).toString('hex');
     refreshTokenValue = crypto.randomBytes(32).toString('hex');
 
-    data.token = tokenValue;
-    token = new AccessToken(data);
-
-    data.token = refreshTokenValue;
-    refreshToken = new RefreshToken(data);
-
-    refreshToken.save(errorHandler);
-
-    token.save(function (err) {
-        if (err) {
-
-            log.error(err);
-            return done(err);
-        }
+    var tokens = [
+        AccessToken.create(Object.assign({}, data, {token: tokenValue})),
+        RefreshToken.create(Object.assign({}, data, {token: refreshTokenValue}))
+    ];
+    Promise.all(tokens).then(function() {
         done(null, tokenValue, refreshTokenValue, {
             'expires_in': config.get('security:tokenLife')
         });
+    }).catch(function(err) {
+        if (err) {
+            log.error(err);
+            return done(err);
+        }
     });
 };
 
-// Exchange username & password for access token
-aserver.exchange(oauth2orize.exchange.password(function (client, username, password, scope, done) {
+aserver.serializeClient(
+    (client, done) => {
+        return done(null, client.id);
+    }
+);
 
-    User.findOne({ username: username }, function (err, user) {
-
-        if (err) {
-            return done(err);
+aserver.deserializeClient((id, done) => {
+    Client.findById(id).then((client) => {
+        return done(null, client);
+    }).catch((error) => {
+        if (error) {
+            return done(error);
         }
+    });
+});
 
-        if (!user || !user.checkPassword(password)) {
+
+// Exchange username & password for access token
+aserver.exchange(oauth2orize.exchange.password(function(client, username, password, scope, done) {
+    User.findOne({where: {username: username}}).then(function(user) {
+        if (!user || !user.isPassEqual(password)) {
             return done(null, false);
         }
 
         var model = {
-            userId: user.userId,
+            userId: user.id,
             clientId: client.clientId
         };
 
         generateTokens(model, done);
+    }).catch(function(err) {
+        if (err) {
+            return done(err);
+        }
     });
 
 }));
 
 // Exchange refreshToken for access token
-aserver.exchange(oauth2orize.exchange.refreshToken(function (client, refreshToken, scope, done) {
-
-    RefreshToken.findOne({ token: refreshToken, clientId: client.clientId }, function (err, token) {
-        if (err) {
-            return done(err);
+aserver.exchange(oauth2orize.exchange.refreshToken(function(client, refreshToken, scope, done) {
+    RefreshToken.findOne({
+        where: {
+            token: refreshToken,
+            clientId: client.clientId
         }
-
+    }).then(function(token) {
         if (!token) {
             return done(null, false);
         }
 
-        User.findById(token.userId, function (err, user) {
-            if (err) { return done(err); }
-            if (!user) { return done(null, false); }
+        return User.findById(token.userId).then(function(user) {
+            if (!user) {
+                return done(null, false);
+            }
 
             var model = {
-                userId: user.userId,
+                userId: user.id,
                 clientId: client.clientId
             };
 
             generateTokens(model, done);
         });
+    }).catch(function(err) {
+        if (err) {
+            return done(err);
+        }
     });
 }));
 
@@ -115,7 +130,7 @@ aserver.exchange(oauth2orize.exchange.refreshToken(function (client, refreshToke
 // authenticate when making requests to this endpoint.
 
 exports.token = [
-    passport.authenticate(['basic', 'oauth2-client-password'], { session: false }),
+    passport.authenticate(['basic', 'oauth2-client-password'], {session: false}),
     aserver.token(),
     aserver.errorHandler()
 ];

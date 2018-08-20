@@ -4,9 +4,41 @@ var libs = process.cwd() + '/libs/';
 var config = require(libs + 'config');
 var log = require(libs + 'log')(module);
 var app = require(libs + 'app');
+var db = require(libs + '/models');
+const upsert = require(libs + '/import/upsert');
+
+function upsertClients() {
+  var $clients = [];
+  var clients = config.get('clients')
+  for (var i = 0; i < clients.length; i++) {
+    var client = clients[i];
+    $clients.push(upsert(db.models.Client, client, {clientId: client.clientId}));
+  }
+  return $clients;
+}
+
+function upsertUsers() {
+  var $users = [];
+  var users = config.get('users')
+  for (var i = 0; i < users.length; i++) {
+    var user = users[i];
+    $users.push(upsert(db.models.User, user, {username: user.username}));
+  }
+  return $users;
+}
 
 app.set('port', process.env.PORT || config.get('port') || 3000);
 
-var server = app.listen(app.get('port'), function () {
-  log.info('Express server listening on port ' + app.get('port'));
+db.sequelize.sync({force: true}).then(() => {
+  Promise.all(upsertClients().concat(upsertUsers())).then(() => {
+    return;
+  }).catch((err) => {
+    console.error(err);
+  }).then(() => {
+    var server = app.listen(app.get('port'), function() {
+      log.info('Express server listening on port ' + app.get('port'));
+    });
+  });
+}).catch((err) => {
+  console.error(err);
 });

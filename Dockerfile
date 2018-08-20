@@ -1,6 +1,6 @@
-FROM node:6.10.3
+FROM node:10.5.0
 
-LABEL maintainer="Yuttasak Pannawat <yuttasakcom@gmail.com>"
+LABEL maintainer="Aronov Aleks <psychosanchez@outlook.com>"
 
 RUN mkdir -p /app
 ADD package.json /app

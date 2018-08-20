@@ -2,8 +2,7 @@ language: node_js
 node_js:
   - node
 services:
-  - mongodb
+  - postgresql
 before_script:
-  - npm run-script generate
   - npm start &
   - sleep 15
